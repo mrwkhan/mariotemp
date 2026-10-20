@@ -1,0 +1,1399 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003399">
+<title>THW-Führungsquiz</title>
+<style>
+  :root {
+    --thw-blau: #003399;
+    --thw-blau-dunkel: #00205f;
+    --thw-blau-mittel: #1846b8;
+    --thw-blau-hell: #e9effb;
+    --thw-blau-linie: #b9c9ee;
+    --weiss: #ffffff;
+    --text: #0e1a33;
+    --text-leise: #46536e;
+    --gespielt-bg: #dde1e8;
+    --gespielt-text: #8b94a6;
+    --hintergrund: #f1f4fa;
+    --ok: #2b8a3e;
+    --falsch: #c92a2a;
+    --schatten: 0 0.4vmin 1.6vmin rgba(0, 32, 95, 0.18);
+    --radius: clamp(8px, 1.2vmin, 16px);
+    --luecke: clamp(8px, 1.4vmin, 20px);
+    --rand: clamp(16px, 2.4vmin, 40px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, system-ui, sans-serif;
+    background: var(--hintergrund);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body.gesperrt { overflow: hidden; }
+
+  button { touch-action: manipulation; }
+
+  /* ---------- Kopfzeile ---------- */
+  .kopf {
+    background: var(--thw-blau);
+    color: var(--weiss);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--luecke);
+    padding: max(clamp(10px, 1.4vmin, 22px), env(safe-area-inset-top)) max(var(--rand), env(safe-area-inset-right)) clamp(10px, 1.4vmin, 22px) max(var(--rand), env(safe-area-inset-left));
+    box-shadow: var(--schatten);
+  }
+
+  .marke { display: flex; align-items: center; gap: clamp(10px, 1.8vmin, 24px); min-width: 0; }
+
+  .badge {
+    background: var(--weiss);
+    color: var(--thw-blau);
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    font-size: clamp(1.2rem, 3.2vmin, 2.5rem);
+    padding: 0.12em 0.45em;
+    border-radius: calc(var(--radius) * 0.7);
+    line-height: 1.1;
+  }
+
+  .titel { min-width: 0; }
+  .titel h1 { font-size: clamp(1.2rem, 3.4vmin, 2.7rem); font-weight: 800; line-height: 1.1; }
+  .titel p { font-size: clamp(0.85rem, 1.8vmin, 1.35rem); opacity: 0.88; margin-top: 0.15em; }
+
+  .werkzeuge { display: flex; gap: clamp(6px, 1vmin, 14px); flex-shrink: 0; }
+
+  .werkzeug-btn {
+    font: inherit;
+    font-size: clamp(0.85rem, 1.7vmin, 1.25rem);
+    font-weight: 600;
+    color: var(--weiss);
+    background: transparent;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: calc(var(--radius) * 0.7);
+    padding: 0.45em 0.9em;
+    min-height: 40px;
+    cursor: pointer;
+  }
+  .werkzeug-btn:focus-visible { outline: 3px solid var(--weiss); outline-offset: 2px; }
+
+  /* ---------- Punktestand ---------- */
+  .punkte-leiste {
+    display: flex;
+    align-items: center;
+    gap: var(--luecke);
+    padding: clamp(8px, 1.2vmin, 16px) max(var(--rand), env(safe-area-inset-right)) 0 max(var(--rand), env(safe-area-inset-left));
+  }
+
+  .punkte-chips { display: flex; flex-wrap: wrap; gap: clamp(6px, 1vmin, 14px); flex: 1; min-width: 0; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    background: var(--weiss);
+    border: 2px solid var(--thw-blau-linie);
+    border-radius: 999px;
+    padding: 0.25em 0.9em 0.25em 0.6em;
+    font-size: clamp(0.95rem, 2.3vmin, 1.8rem);
+    font-weight: 700;
+    white-space: nowrap;
+    box-shadow: var(--schatten);
+  }
+  .chip.fuehrend { border-color: var(--thw-blau); background: var(--thw-blau-hell); }
+  .chip.fuehrend .chip-name::before { content: "★ "; color: var(--thw-blau); }
+  .chip-wert { color: var(--thw-blau); font-weight: 900; font-variant-numeric: tabular-nums; }
+
+  .farbpunkt { width: 0.75em; height: 0.75em; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+
+  .fortschritt {
+    color: var(--text-leise);
+    font-weight: 600;
+    font-size: clamp(0.8rem, 1.8vmin, 1.35rem);
+    white-space: nowrap;
+  }
+
+  .link-btn {
+    font: inherit;
+    font-size: clamp(0.85rem, 1.8vmin, 1.35rem);
+    font-weight: 700;
+    color: var(--thw-blau);
+    background: var(--weiss);
+    border: 2px solid var(--thw-blau);
+    border-radius: 999px;
+    padding: 0.3em 0.9em;
+    min-height: 40px;
+    cursor: pointer;
+  }
+  .link-btn[hidden] { display: none; }
+
+  /* ---------- Spielfeld ---------- */
+  .brett {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: auto repeat(4, minmax(0, 1fr));
+    gap: var(--luecke);
+    padding: var(--luecke) max(var(--rand), env(safe-area-inset-right)) var(--luecke) max(var(--rand), env(safe-area-inset-left));
+  }
+
+  .kategorie, .kachel { grid-column: var(--dc); grid-row: var(--dr); }
+
+  .kategorie {
+    background: var(--weiss);
+    border-radius: var(--radius);
+    border-bottom: clamp(4px, 0.7vmin, 8px) solid var(--thw-blau);
+    box-shadow: var(--schatten);
+    padding: clamp(8px, 1.3vmin, 18px) clamp(8px, 1.2vmin, 16px);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .kategorie-name { color: var(--thw-blau); font-weight: 800; font-size: clamp(1rem, 2.8vmin, 2.2rem); line-height: 1.15; }
+  .kategorie-rollen { color: var(--text-leise); font-weight: 600; font-size: clamp(0.78rem, 1.6vmin, 1.25rem); margin-top: 0.3em; }
+
+  .kachel {
+    position: relative;
+    font: inherit;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(160deg, var(--thw-blau-mittel), var(--thw-blau));
+    color: var(--weiss);
+    box-shadow: var(--schatten);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 56px;
+    transition: transform 0.12s ease, background 0.2s ease;
+  }
+
+  .kachel-punkte {
+    font-size: clamp(2rem, 7.5vmin, 6.2rem);
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-shadow: 0 0.3vmin 0.8vmin rgba(0, 0, 0, 0.25);
+  }
+
+  .kachel:active { transform: scale(0.98); }
+  .kachel:focus-visible { outline: 4px solid var(--thw-blau-dunkel); outline-offset: 3px; }
+
+  .kachel.gespielt { background: var(--gespielt-bg); color: var(--gespielt-text); box-shadow: none; border: 2px dashed #b4bbc8; }
+  .kachel.gespielt .kachel-punkte { text-shadow: none; text-decoration: line-through; text-decoration-thickness: 0.08em; opacity: 0.75; }
+
+  .kachel-haken {
+    display: none;
+    position: absolute;
+    top: 0.45em;
+    right: 0.6em;
+    font-size: clamp(0.75rem, 1.7vmin, 1.35rem);
+    font-weight: 700;
+    color: var(--gespielt-text);
+  }
+  .kachel.gespielt .kachel-haken { display: block; }
+
+  .kachel-teams {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.5em;
+    display: flex;
+    justify-content: center;
+    gap: 0.35em;
+  }
+  .kachel-teams i { display: block; width: clamp(10px, 1.6vmin, 22px); height: clamp(10px, 1.6vmin, 22px); border-radius: 50%; border: 2px solid var(--weiss); }
+
+  @media (hover: hover) {
+    .werkzeug-btn:hover { background: rgba(255, 255, 255, 0.14); }
+    .kachel:hover { transform: translateY(-2px); background: linear-gradient(160deg, #2a5ad0, var(--thw-blau-mittel)); }
+    .kachel.gespielt:hover { transform: none; background: #d3d8e1; }
+    .btn-primaer:hover { background: var(--thw-blau-dunkel); border-color: var(--thw-blau-dunkel); }
+    .btn-sekundaer:hover { background: var(--thw-blau-hell); }
+  }
+
+  /* ---------- Fußzeile ---------- */
+  .fuss {
+    color: var(--text-leise);
+    font-size: clamp(0.72rem, 1.4vmin, 1.05rem);
+    text-align: center;
+    padding: 0 var(--rand) max(clamp(8px, 1.2vmin, 16px), env(safe-area-inset-bottom));
+  }
+
+  /* ---------- Overlays ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 20, 60, 0.72);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(8px, 2vmin, 32px);
+    z-index: 10;
+    animation: einblenden 0.18s ease-out;
+  }
+  .overlay[hidden] { display: none; }
+
+  @keyframes einblenden { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--weiss);
+    width: min(1500px, 100%);
+    height: 100%;
+    border-radius: calc(var(--radius) * 1.3);
+    box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .modal-kopf {
+    background: var(--thw-blau);
+    color: var(--weiss);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1em;
+    padding: clamp(10px, 1.8vmin, 26px) clamp(16px, 3vmin, 48px);
+    font-size: clamp(1.05rem, 2.6vmin, 2rem);
+    font-weight: 700;
+  }
+
+  .modal-punkte { background: var(--weiss); color: var(--thw-blau); border-radius: 999px; padding: 0.1em 0.75em; font-weight: 900; white-space: nowrap; }
+
+  .modal-inhalt {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(16px, 2.8vmin, 48px) clamp(16px, 4vmin, 72px);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(12px, 2.2vmin, 32px);
+  }
+
+  .frage {
+    font-size: clamp(1.45rem, 5vmin, 4rem);
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--thw-blau-dunkel);
+    margin: auto 0;
+    text-align: center;
+  }
+  .modal.aufgedeckt .frage { font-size: clamp(1.1rem, 2.8vmin, 2.2rem); margin: 0; text-align: left; }
+
+  .loesung { display: flex; flex-direction: column; gap: clamp(10px, 1.8vmin, 26px); animation: einblenden 0.25s ease-out; }
+  .loesung[hidden] { display: none; }
+
+  .antwort-box {
+    background: var(--thw-blau-hell);
+    border-left: clamp(6px, 1vmin, 12px) solid var(--thw-blau);
+    border-radius: var(--radius);
+    padding: clamp(10px, 1.8vmin, 26px) clamp(14px, 2.6vmin, 40px);
+  }
+
+  .abschnitt-titel {
+    font-size: clamp(0.8rem, 1.7vmin, 1.3rem);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--thw-blau);
+    font-weight: 800;
+    margin-bottom: 0.4em;
+  }
+
+  .antwort { font-size: clamp(1.15rem, 3.1vmin, 2.4rem); font-weight: 800; line-height: 1.25; }
+
+  .stichpunkte { margin-top: 0.5em; padding-left: 1.2em; font-size: clamp(1rem, 2.35vmin, 1.8rem); line-height: 1.35; }
+  .stichpunkte:empty { display: none; }
+  .stichpunkte li { margin-top: 0.2em; }
+  .stichpunkte li::marker { color: var(--thw-blau); }
+
+  .zweispaltig { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: clamp(12px, 2.4vmin, 36px); }
+
+  .erklaerung p { font-size: clamp(1rem, 2.3vmin, 1.75rem); line-height: 1.4; }
+
+  .referenz { background: #f6f7fa; border: 1px solid var(--thw-blau-linie); border-radius: var(--radius); padding: clamp(10px, 1.8vmin, 26px); }
+  .referenz ul { list-style: none; display: flex; flex-direction: column; gap: 0.5em; }
+  .referenz li { font-size: clamp(0.88rem, 1.85vmin, 1.4rem); line-height: 1.4; color: var(--text-leise); padding-left: 1.1em; position: relative; }
+  .referenz li::before { content: "▸"; position: absolute; left: 0; color: var(--thw-blau); }
+
+  .modal-fuss {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(8px, 1.4vmin, 18px);
+    padding: clamp(8px, 1.5vmin, 22px);
+    border-top: 1px solid var(--thw-blau-linie);
+    background: #fafbfd;
+  }
+
+  .modal-aktionen { display: flex; justify-content: center; gap: clamp(10px, 2vmin, 32px); }
+
+  .btn {
+    font: inherit;
+    font-size: clamp(1.05rem, 2.7vmin, 2.1rem);
+    font-weight: 800;
+    border-radius: var(--radius);
+    padding: 0.5em 1.6em;
+    cursor: pointer;
+    min-height: 48px;
+    border: 3px solid var(--thw-blau);
+  }
+  .btn[hidden] { display: none; }
+  .btn-primaer { background: var(--thw-blau); color: var(--weiss); }
+  .btn-sekundaer { background: var(--weiss); color: var(--thw-blau); }
+  .btn:focus-visible, .vg-btn:focus-visible, .link-btn:focus-visible { outline: 4px solid #ffb400; outline-offset: 3px; }
+
+  /* Punktevergabe */
+  .vergabe { display: flex; flex-direction: column; align-items: center; gap: 0.5em; width: 100%; }
+  .vergabe[hidden] { display: none; }
+  .vergabe-liste { display: flex; flex-wrap: wrap; justify-content: center; gap: clamp(8px, 1.4vmin, 20px); }
+
+  .vergabe-team {
+    display: flex;
+    align-items: center;
+    gap: 0.4em;
+    background: var(--weiss);
+    border: 1px solid var(--thw-blau-linie);
+    border-radius: var(--radius);
+    padding: 0.3em 0.4em 0.3em 0.7em;
+    font-size: clamp(0.95rem, 2.1vmin, 1.6rem);
+  }
+  .vergabe-name { font-weight: 700; display: flex; align-items: center; gap: 0.4em; white-space: nowrap; }
+
+  .vg-btn {
+    font: inherit;
+    font-weight: 800;
+    border-radius: calc(var(--radius) * 0.7);
+    padding: 0.3em 0.75em;
+    min-height: 44px;
+    border: 2px solid;
+    background: var(--weiss);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .vg-btn.richtig { border-color: var(--ok); color: var(--ok); }
+  .vg-btn.richtig[aria-pressed="true"] { background: var(--ok); color: var(--weiss); }
+  .vg-btn.falsch { border-color: var(--falsch); color: var(--falsch); }
+  .vg-btn.falsch[aria-pressed="true"] { background: var(--falsch); color: var(--weiss); }
+
+  /* Dialoge (Teams, Endstand) */
+  .dialog {
+    background: var(--weiss);
+    width: min(680px, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    border-radius: calc(var(--radius) * 1.3);
+    box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.4);
+    padding: clamp(18px, 3vmin, 40px);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    font-size: clamp(1rem, 2vmin, 1.4rem);
+  }
+  .dialog h2 { color: var(--thw-blau); font-size: clamp(1.3rem, 3.2vmin, 2.4rem); line-height: 1.15; }
+  .dialog-hinweis { color: var(--text-leise); line-height: 1.4; }
+
+  .stepper { display: flex; align-items: center; gap: 0.75rem; font-weight: 700; flex-wrap: wrap; }
+  .stepper-btn {
+    font: inherit;
+    font-size: 1.5rem;
+    font-weight: 800;
+    width: 48px;
+    height: 48px;
+    border-radius: calc(var(--radius) * 0.7);
+    border: 2px solid var(--thw-blau);
+    background: var(--weiss);
+    color: var(--thw-blau);
+    cursor: pointer;
+  }
+  .stepper-btn:disabled { opacity: 0.35; cursor: default; }
+  .stepper-wert { min-width: 1.5em; text-align: center; font-size: 1.4em; color: var(--thw-blau); font-variant-numeric: tabular-nums; }
+
+  .team-namen { display: flex; flex-direction: column; gap: 0.6rem; }
+  .team-feld { display: flex; align-items: center; gap: 0.6rem; }
+  .team-feld input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: max(16px, 1em);
+    padding: 0.55em 0.7em;
+    border: 2px solid var(--thw-blau-linie);
+    border-radius: calc(var(--radius) * 0.7);
+    color: var(--text);
+  }
+  .team-feld input:focus { outline: none; border-color: var(--thw-blau); }
+
+  .schalter { display: flex; gap: 0.7rem; align-items: flex-start; line-height: 1.35; cursor: pointer; }
+  .schalter input { width: 22px; height: 22px; margin-top: 0.1em; accent-color: var(--thw-blau); flex-shrink: 0; }
+
+  .dialog-aktionen { display: flex; gap: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
+  .dialog .btn { font-size: clamp(1rem, 2.2vmin, 1.6rem); padding: 0.5em 1.2em; }
+
+  .rang-liste { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+  .rang {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6em 0.9em;
+    border-radius: var(--radius);
+    background: var(--thw-blau-hell);
+    font-size: clamp(1.1rem, 2.8vmin, 2rem);
+    font-weight: 700;
+  }
+  .rang.erster { background: var(--thw-blau); color: var(--weiss); }
+  .rang-platz { min-width: 2em; font-weight: 900; }
+  .rang-wert { margin-left: auto; font-weight: 900; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Handy hochkant (z. B. iPhone 16 Pro, 393 px) ---------- */
+  @media (max-width: 640px) {
+    html, body { height: auto; }
+    .kopf { flex-wrap: wrap; gap: 10px; padding-bottom: 10px; }
+    .badge { font-size: 1.1rem; }
+    .titel h1 { font-size: 1.15rem; }
+    .titel p { font-size: 0.8rem; }
+    .werkzeuge { width: 100%; }
+    .werkzeug-btn { flex: 1; font-size: 0.85rem; padding: 0.45em 0.3em; }
+
+    .punkte-leiste { padding-top: 10px; gap: 8px; }
+    .punkte-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
+    .punkte-chips::-webkit-scrollbar { display: none; }
+    .chip { font-size: 0.95rem; flex-shrink: 0; box-shadow: none; }
+    .fortschritt, .link-btn { font-size: 0.8rem; }
+
+    .brett { flex: none; grid-template-rows: none; grid-auto-rows: auto; gap: 8px; padding-top: 6px; }
+    .kategorie, .kachel { grid-column: var(--mc); grid-row: var(--mr); }
+    .kategorie { text-align: left; padding: 8px 12px; border-bottom-width: 4px; margin-top: 8px; }
+    .kategorie-name { font-size: 1.05rem; }
+    .kategorie-rollen { font-size: 0.78rem; margin-top: 0.15em; }
+    .kachel { min-height: 62px; }
+    .kachel-punkte { font-size: 1.55rem; }
+    .kachel-haken { top: 0.3em; right: 0.45em; font-size: 0.75rem; }
+    .kachel-teams { bottom: 0.35em; }
+    .kachel-teams i { width: 9px; height: 9px; border-width: 1px; }
+    .nur-gross, .tasten-hinweis { display: none; }
+
+    .fuss { padding-top: 6px; }
+
+    #overlay { padding: 0; }
+    .modal { border-radius: 0; width: 100%; }
+    .modal-kopf { padding: max(10px, env(safe-area-inset-top)) 16px 10px; font-size: 1rem; }
+    .modal-inhalt { padding: 16px; gap: 14px; }
+    .frage { font-size: 1.45rem; }
+    .modal.aufgedeckt .frage { font-size: 1.1rem; }
+    .antwort { font-size: 1.12rem; }
+    .stichpunkte, .erklaerung p { font-size: 1rem; }
+    .zweispaltig { grid-template-columns: 1fr; }
+    .modal-fuss { padding: 10px 16px max(10px, env(safe-area-inset-bottom)); align-items: stretch; }
+    .modal-aktionen { gap: 10px; }
+    .modal-aktionen .btn { flex: 1; font-size: 1.05rem; padding: 0.55em 0.5em; }
+
+    .vergabe-liste { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: 8px; }
+    .vergabe-liste.einzeln { grid-template-columns: 1fr; }
+    .vergabe-team { flex-wrap: wrap; justify-content: center; padding: 6px; font-size: 0.95rem; }
+    .vergabe-liste:not(.einzeln) .vergabe-name { width: 100%; justify-content: center; overflow: hidden; text-overflow: ellipsis; }
+    .vg-btn { flex: 1; padding: 0.3em 0.4em; }
+
+    .dialog-aktionen .btn { flex: 1; }
+  }
+
+  /* ---------- Handy quer ---------- */
+  @media (max-height: 520px) and (min-width: 641px) {
+    html, body { height: auto; }
+    .titel p, .tasten-hinweis, .kategorie-rollen, .nur-gross { display: none; }
+    .kopf { padding-top: max(6px, env(safe-area-inset-top)); padding-bottom: 6px; }
+    .titel h1 { font-size: 1.1rem; }
+    .werkzeug-btn { min-height: 36px; padding: 0.3em 0.8em; }
+    .punkte-leiste { padding-top: 6px; }
+    .chip { font-size: 0.9rem; box-shadow: none; }
+    .link-btn { min-height: 34px; }
+    .brett { flex: none; grid-template-rows: auto repeat(4, 52px); gap: 8px; padding-top: 8px; padding-bottom: 8px; }
+    .kategorie { padding: 6px 8px; border-bottom-width: 4px; }
+    .kategorie-name { font-size: 1rem; }
+    .kachel { min-height: 0; }
+    .kachel-punkte { font-size: 1.7rem; }
+    .kachel-teams { bottom: 0.3em; }
+    .kachel-teams i { width: 9px; height: 9px; border-width: 1px; }
+
+    #overlay { padding: 0; }
+    .modal { border-radius: 0; }
+    .modal-kopf { padding: max(6px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 6px max(16px, env(safe-area-inset-left)); font-size: 1rem; }
+    .modal-inhalt { padding: 12px max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)); gap: 10px; }
+    .frage { font-size: 1.4rem; }
+    .modal.aufgedeckt .frage { font-size: 1.05rem; }
+    .antwort { font-size: 1.05rem; }
+    .stichpunkte, .erklaerung p { font-size: 0.95rem; }
+    .modal-fuss { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: 6px 16px max(6px, env(safe-area-inset-bottom)); }
+    .vergabe { width: auto; }
+    .vergabe .abschnitt-titel { display: none; }
+    .vergabe-team { font-size: 0.9rem; }
+    .vg-btn, .btn { min-height: 40px; }
+    .btn { font-size: 1rem; padding: 0.35em 1.2em; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <div class="marke">
+    <span class="badge" aria-hidden="true">THW</span>
+    <div class="titel">
+      <h1>Wer darf was? Das Führungsquiz</h1>
+      <p>Sensibilisierung Unterführer · DV 100 · StAN OV</p>
+    </div>
+  </div>
+  <div class="werkzeuge">
+    <button type="button" class="werkzeug-btn" id="btn-teams">Teams</button>
+    <button type="button" class="werkzeug-btn" id="btn-vollbild">Vollbild</button>
+    <button type="button" class="werkzeug-btn" id="btn-reset">Neues Spiel</button>
+  </div>
+</header>
+
+<section class="punkte-leiste" aria-label="Punktestand">
+  <div class="punkte-chips" id="punkte-chips"></div>
+  <span class="fortschritt" id="fortschritt"></span>
+  <button type="button" class="link-btn" id="btn-endstand" hidden>Endstand</button>
+</section>
+
+<main class="brett" id="brett" aria-label="Spielfeld"></main>
+
+<footer class="fuss">
+  Quellen: DV 1-100 · DV 1-101 mit Anlagen 03 und 10 · Ausbildungshandbuch Zugtrupp Teil 1/2 · FüUF 26 · GA LA 1 · GO/EA – maßgeblich ist die jeweils gültige Fassung
+  <span class="tasten-hinweis">· Tasten: <strong>L</strong>/<strong>→</strong> Lösung, <strong>1–6</strong> Punkte an Team, <strong>Esc</strong> Schließen</span>
+</footer>
+
+<!-- Frage -->
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-frage">
+    <div class="modal-kopf">
+      <span id="m-kategorie"></span>
+      <span class="modal-punkte" id="m-punkte"></span>
+    </div>
+    <div class="modal-inhalt" id="m-inhalt">
+      <p class="frage" id="m-frage"></p>
+      <section class="loesung" id="m-loesung" hidden>
+        <div class="antwort-box">
+          <h2 class="abschnitt-titel">Antwort</h2>
+          <p class="antwort" id="m-antwort"></p>
+          <ul class="stichpunkte" id="m-stichpunkte"></ul>
+        </div>
+        <div class="zweispaltig">
+          <div class="erklaerung">
+            <h3 class="abschnitt-titel">Erklärung</h3>
+            <p id="m-erklaerung"></p>
+          </div>
+          <div class="referenz">
+            <h3 class="abschnitt-titel">Quelle</h3>
+            <ul id="m-referenz"></ul>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="modal-fuss">
+      <div class="vergabe" id="vergabe" hidden>
+        <div class="abschnitt-titel" id="vergabe-titel"></div>
+        <div class="vergabe-liste" id="vergabe-liste"></div>
+      </div>
+      <div class="modal-aktionen">
+        <button type="button" class="btn btn-primaer" id="btn-loesung">Lösung anzeigen</button>
+        <button type="button" class="btn btn-sekundaer" id="btn-schliessen">Schließen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Teams -->
+<div class="overlay" id="team-overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="t-titel">
+    <h2 id="t-titel">Spiel einrichten</h2>
+    <p class="dialog-hinweis">Punkte vergibst du nach „Lösung anzeigen“. Für das Einzelspiel am Handy einfach 1 Team wählen.</p>
+    <div class="stepper">
+      <span>Anzahl Teams</span>
+      <button type="button" class="stepper-btn" id="t-weniger" aria-label="Ein Team weniger">−</button>
+      <span class="stepper-wert" id="t-anzahl" aria-live="polite"></span>
+      <button type="button" class="stepper-btn" id="t-mehr" aria-label="Ein Team mehr">+</button>
+    </div>
+    <div class="team-namen" id="t-namen"></div>
+    <label class="schalter">
+      <input type="checkbox" id="t-minus">
+      <span>Falsche Antworten ziehen Punkte ab</span>
+    </label>
+    <div class="dialog-aktionen">
+      <button type="button" class="btn btn-sekundaer" id="t-abbrechen">Abbrechen</button>
+      <button type="button" class="btn btn-primaer" id="t-ok">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Endstand -->
+<div class="overlay" id="end-overlay" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="e-titel">
+    <h2 id="e-titel">Endstand</h2>
+    <p class="dialog-hinweis" id="e-hinweis"></p>
+    <ol class="rang-liste" id="e-liste"></ol>
+    <div class="dialog-aktionen">
+      <button type="button" class="btn btn-sekundaer" id="e-zurueck">Zum Spielfeld</button>
+      <button type="button" class="btn btn-primaer" id="e-neu">Neues Spiel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Fragenkatalog. Quellen: DV 1-100, DV 1-101 (inkl. Anlagen 03 und 10), Ausbildungshandbuch Zugtrupp Teil 1/2,
+  // FüUF 26 (Unterführungsperson, Führungsorganisation, Bevölkerungsschutz), GA LA 1, GO/EA.
+  const QUIZ = [
+    {
+      "kategorie": "Führung vor Ort",
+      "punkte": 100,
+      "frage": "Wer trägt an der Einsatzstelle die Gesamtverantwortung und trifft alle Entscheidungen, die zur Bewältigung der Lage erforderlich sind?",
+      "antwort": "Der Einsatzleiter (EL).",
+      "stichpunkte": [
+        "Leitet gesamtverantwortlich alle ihm an der Einsatzstelle unterstellten Einsatzkräfte – ihm obliegt die Befehlsgewalt",
+        "Hat die Aufgabe der Lageerkundung und der Einsatzdurchführung",
+        "Koordiniert alle an der Gefahrenabwehr beteiligten Stellen",
+        "Kann gesetzlich übertragene Befugnisse gegenüber Dritten haben, z. B. Absperrmaßnahmen oder das Betreten und Räumen von Grundstücken"
+      ],
+      "erklaerung": "Primäres Einsatzziel bei allen Entscheidungen ist das Retten, In-Sicherheit-bringen und Schützen von Menschen. Wer Einsatzleiter ist, bestimmt das jeweilige Landesrecht. Wichtig für das THW: Fordert ein Bedarfsträger mit eigener Führungsstruktur das THW an, werden die THW-Einheiten seiner Einsatzleitung unterstellt.",
+      "referenz": [
+        "DV 1-101, Kap. 3.3 „Einsatzleitung“ und Kap. 3.3.1 „Aufgaben des Einsatzleiters“ (S. 3-2)",
+        "DV 1-101 Anlage 03 „Einsatzgrundsätze des THW“, Folie 1–3 (Unterstellung)"
+      ]
+    },
+    {
+      "kategorie": "Führung vor Ort",
+      "punkte": 200,
+      "frage": "Zugführer und Gruppenführer führen gemeinsam im Technischen Zug. Wie ist die Führung zwischen beiden aufgeteilt?",
+      "antwort": "Der Zugführer führt den Zug taktisch – die Gruppenführer führen ihre Gruppen technisch eigenverantwortlich.",
+      "stichpunkte": [
+        "ZFü: erfasst mit dem Zugtrupp Auftrag und Lage, entscheidet über den Einsatz der THW-Kräfte und koordiniert die Gruppen",
+        "GrFü: führt die Gruppe nach Auftragserteilung durch den ZFü technisch eigenverantwortlich und leitet die Helfenden fachlich an",
+        "GrFü berät den ZFü bzw. Einsatzleiter insbesondere in Fragen der Fachfähigkeiten der Gruppe"
+      ],
+      "erklaerung": "Das THW führt in der Regel mit Auftragstaktik: Die übergeordnete Ebene gibt das Ziel vor, über den Weg entscheidet die nachgeordnete. Befehlstaktik kommt bei Bedarf auf der Ebene der Gruppen- und Truppbefehlsgebung zum Einsatz.",
+      "referenz": [
+        "Ausbildungshandbuch Zugtrupp Teil 1, Kap. 1.2.2 „Einsatzoptionen“ (S. 1-7 f.)",
+        "GA LA 1, Kap. 1.1.5.2 „Aufgabenbeschreibung Zug-, Zugtrupp-, Gruppen- und Truppführer/innen“",
+        "DV 1-101, Kap. 2.3.5.2 „Auftragstaktik“ (S. 2-26)"
+      ]
+    },
+    {
+      "kategorie": "Führung vor Ort",
+      "punkte": 300,
+      "frage": "Deiner Gruppe wurde ein Einsatzraum zugewiesen. Welche Aufgaben hast du jetzt als Gruppenführer? Nenne mindestens vier.",
+      "antwort": "Erkunden – melden – Methode festlegen – befehlen – Gerät anfordern und zuweisen – überwachen.",
+      "stichpunkte": [
+        "Den zugewiesenen Einsatzraum erkunden",
+        "Die Erkundungsergebnisse melden",
+        "Die anzuwendende Instandsetzungs- bzw. Einsatzmethode bestimmen",
+        "Den Einsatzbefehl zur Durchführung geben",
+        "Zusätzliches Gerät beim Zugführer anfordern und den Helfenden zuweisen",
+        "Arbeiten, Sicherheit der Helfenden und Einhaltung der UVV/Hygiene überwachen"
+      ],
+      "erklaerung": "Unterführer sind „Scharnier oder Prellbock zwischen den Fronten“: Du übersetzt den Auftrag in konkrete Befehle und meldest Lage, Bedarf und Probleme nach oben. Nach dem Führungsgrundsatz „Verantwortung trotz Aufgabenteilung“ bleibst du für deinen Bereich verantwortlich, auch wenn die Trupps die Arbeit ausführen.",
+      "referenz": [
+        "FüUF 26 Lernunterlage „Der Unterführer bzw. die Unterführerin“, Kap. 1.7.2 „Aufgaben im Einsatz“ und Kap. 1.5.5 „Scharnierfunktion im Ortsverband“",
+        "DV 1-100, Kap. 2.1 „Führungsgrundsätze“"
+      ]
+    },
+    {
+      "kategorie": "Führung vor Ort",
+      "punkte": 400,
+      "frage": "Die Führungsorganisation kennt die Führungsstufen A bis D. Welcher Stufe ist der Zugtrupp zugeordnet – und was unterscheidet sie von Stufe A?",
+      "antwort": "Führungsstufe B – „Führen mit örtlichen Führungseinheiten“ (Führungstrupp).",
+      "stichpunkte": [
+        "A: Führen ohne Führungseinheit – taktische Einheiten bis zur Stärke von zwei Gruppen",
+        "B: Zug oder Verband an einer Einsatzstelle – Führungstrupp oder Führungsstaffel, z. B. der Zugtrupp",
+        "C: Verband an einer Einsatzstelle – Führungsgruppe",
+        "D: mehrere Verbände an einer oder mehreren Einsatzstellen – Führungsgruppe bzw. Führungsstab"
+      ],
+      "erklaerung": "Gliederung und Besetzung der Einsatzleitung ergeben sich fließend aus der Entwicklung der Lage: Zuerst führt die eintreffende Führungskraft ihre Einheiten selbst (A); wächst der Einsatz, kommt ein Führungstrupp hinzu (B). Ein Zugtrupp kann sogar als Führungsgruppe für einen Verband eingesetzt werden.",
+      "referenz": [
+        "DV 1-101, Kap. 3.5 „Führungsstufen“ (S. 3-11)",
+        "Ausbildungshandbuch Zugtrupp Teil 1, Kap. 2.1.5, Tab. 2-5 „Führungsstufen“, und Kap. 1.2.2 „Einsatzoptionen“"
+      ]
+    },
+    {
+      "kategorie": "Fachliche Beratung",
+      "punkte": 100,
+      "frage": "Ein Bedarfsträger – z. B. Feuerwehr oder Kommune – fordert das THW an. Wohin entsendet das THW grundsätzlich einen THW-Fachberater?",
+      "antwort": "In den Führungsstab bzw. die Einsatzleitung des Bedarfsträgers.",
+      "stichpunkte": [],
+      "erklaerung": "Einsatzgrundsatz: Das THW entsendet stets einen Fachberater (FaBe) als Ansprechpartner in die Führungsstäbe oder die Einsatzleitung des Bedarfsträgers – je nach Lage auf der oberen Ebene (z. B. Katastrophenschutzleitung, Führungsstab) oder auf der mittleren Ebene (EL/TEL, EAL, UEAL). Zwingende Voraussetzung ist die Qualifikation als THW-Fachberater; den Kreis der FaBe legen Geschäftsführer und OV einvernehmlich fest, ortskundige FaBe werden bevorzugt.",
+      "referenz": [
+        "DV 1-101 Anlage 03 „Einsatzgrundsätze des THW“, Folie 4–7 (THW-Fachberater)",
+        "DV 1-101 Anlage 10 „Führungssystem THW“ (Führungsstellen der Bedarfsträger)"
+      ]
+    },
+    {
+      "kategorie": "Fachliche Beratung",
+      "punkte": 200,
+      "frage": "Welche drei Kernaufgaben hat der THW-Fachberater beim Bedarfsträger?",
+      "antwort": "Beraten – unterrichten – rückinformieren.",
+      "stichpunkte": [
+        "Fachliche Beratung der Führungsstäbe bzw. der Einsatzleitung bei Einsatzmaßnahmen des THW",
+        "Unterrichtung über Einsatzmaßnahmen und Einsatzmöglichkeiten des THW",
+        "Rückinformation an den OV bzw. die GSt über Maßnahmen der Stäbe und Anforderungen an das THW"
+      ],
+      "erklaerung": "Der FaBe ist Bindeglied in beide Richtungen. Er handelt im Auftrag des OB (bzw. der Regionalstellenleitung oder des LB), hält auch außerhalb von Einsätzen Verbindung zu Führungspersonal Dritter, soll ständiges Mitglied in festgelegten Führungsstäben sein und wird im Einsatz automatisch hinzugezogen.",
+      "referenz": [
+        "DV 1-101 Anlage 03 „Einsatzgrundsätze des THW“, Folie 4–7",
+        "GA LA 1, Kap. 1.1.5.1 „Aufgabenbeschreibung Ortsbeauftragte/r mit OV-Stab und Fachberater/innen“"
+      ]
+    },
+    {
+      "kategorie": "Fachliche Beratung",
+      "punkte": 300,
+      "frage": "Wer kann als Technischer Berater (TeBe) des THW eingesetzt werden – und wofür wird er gebraucht?",
+      "antwort": "THW-Helferinnen und -Helfer mit besonderem Fachwissen bzw. Spezialkenntnissen – oder Führungskräfte und Unterführer aus den THW-Fachgruppen.",
+      "stichpunkte": [
+        "Bringt Spezialwissen aus bzw. über THW-Einheiten in eine THW-Führungsstelle ein",
+        "Je nach Einsatzoption und Auftrag kann der Stab einer THW-Führungsstelle um TeBe aus den Fachgruppen ergänzt werden",
+        "Auch im LuK-Stab vorgesehen, z. B. bei speziellen Einsätzen mit Schwerpunkten wie Öl – dort arbeiten TeBe in abgesetzten Räumen beim Sachbearbeiter S 3"
+      ],
+      "erklaerung": "Auch du als Unterführer einer Fachgruppe kannst also TeBe sein! Ausgebildet werden Technische Berater am THW-Ausbildungszentrum Hoya.",
+      "referenz": [
+        "DV 1-101, Kap. 4.3.1.9 „Fachberater / Verbindungspersonen in der THW-Führungsstelle“ (S. 4-62)",
+        "DV 1-101, Kap. 4.3.1 „THW-Führungsstelle mit Stab“ (S. 4-47)",
+        "DV 1-101, Kap. 4.1.2.1 „Aufbauorganisation LuK-Stab“ (S. 4-3 f.) und Anlage 10 (räumliche Organisation)",
+        "FüUF 26 Lernunterlage „Bevölkerungsschutz“, Kap. 2.4.2 „Ausbildungsstätten“"
+      ]
+    },
+    {
+      "kategorie": "Fachliche Beratung",
+      "punkte": 400,
+      "frage": "Eine THW-eigene Führungsstelle (z. B. EAL THW) braucht Spezialwissen über eine THW-Fachgruppe. Holt sie sich dafür einen THW-Fachberater? Begründe!",
+      "antwort": "In der Regel nicht – sie setzt einen Technischen Berater (TeBe) ein. Der THW-Fachberater ist in einer THW-Führungsstelle die Ausnahme.",
+      "stichpunkte": [
+        "Fachberater in einer THW-FüSt kommen von Feuerwehr, Hilfsorganisationen (ASB, DRK, JUH, MHD) und DLRG – oder von Behörden, Organisationen und Firmen",
+        "Der THW-FaBe vertritt das THW in den Stäben der Bedarfsträger",
+        "Der TeBe bringt THW-Spezialwissen in die eigene Führungsstelle"
+      ],
+      "erklaerung": "Merksatz: Der THW-FaBe trägt THW-Wissen zum Bedarfsträger – braucht die THW-Führungsstelle selbst Spezialwissen aus dem THW, kommt ein TeBe. Übrigens: FaBe von Feuerwehr, Hilfsorganisationen oder THW sind Mitglied des Stabes und stehen in einem Unterstellungsverhältnis; FaBe von Firmen, Organisationen oder Behörden nicht – sie brauchen zudem eine Kurzeinweisung in die Stabsarbeit.",
+      "referenz": [
+        "DV 1-101, Kap. 4.3.1.9 „Fachberater / Verbindungspersonen in der THW-Führungsstelle“ (S. 4-61 f.)",
+        "DV 1-101 Anlage 03 „Einsatzgrundsätze des THW“, Folie 4–7"
+      ]
+    },
+    {
+      "kategorie": "Die LuK",
+      "punkte": 100,
+      "frage": "Wofür steht „LuK“ – und wer leitet den LuK-Stab des Ortsverbands?",
+      "antwort": "Leitung und Koordinierung – also der Leitungs- und Koordinierungsstab. Im OV leitet ihn der Ortsbeauftragte (OB); der stv. OB arbeitet als Leiter Stab im Auftrag des OB.",
+      "stichpunkte": [],
+      "erklaerung": "LuK-Stäbe sind keine ständigen Stäbe: Sie nehmen bei Einsätzen die Leitungs- und Koordinierungsaufgaben in der Behördenstruktur wahr – auf allen Ebenen von OV über GSt (heute Regionalstelle) und Landesverband bis zur THW-Leitung. Im OV bedient sich der OB dazu seines OV-Stabes, der lageabhängig erweitert wird.",
+      "referenz": [
+        "DV 1-101, Kap. 4.1.2 „Leitung und Koordinierung / LuK-Stab“ (S. 4-2)",
+        "DV 1-101, Kap. 4.1.4.1 „Leitungs- und Koordinierungsaufgaben auf Ebene der OV“ (S. 4-8) und Kap. 4.1.4.4",
+        "FüUF 26 Lernunterlage „Führungsorganisation“, Kap. 1.5.2 „Bildung von LuK-Strukturen“"
+      ]
+    },
+    {
+      "kategorie": "Die LuK",
+      "punkte": 200,
+      "frage": "In welcher Struktur arbeitet der LuK-Stab OV – Behördenstruktur oder Einsatzstruktur? Darf der OB den eingesetzten Einheiten taktische Weisungen erteilen?",
+      "antwort": "In der Behördenstruktur. Nein – der OB greift grundsätzlich nicht in die technisch-taktische Führung des Einsatzes ein.",
+      "stichpunkte": [
+        "LuK-Stäbe übernehmen einsatzunterstützende und koordinierende Aufgaben – keinerlei technisch-taktisch-operative Führung",
+        "Die entsandten Einheiten werden der Einsatzleitung des Bedarfsträgers unterstellt",
+        "Meldeweg in der THW-Struktur: Zugtrupp → LuK OV → LuK GSt → Landesverband → THW-Leitung"
+      ],
+      "erklaerung": "Der LuK-Stab OV unterstützt die eingesetzten Einheiten, führt sie aber nicht. Die Fürsorgepflicht des OB für die Helfenden (z. B. Familie, Arbeitgeber) bleibt bestehen – geregelt in Zusammenarbeit mit dem Führer bzw. Unterführer der Einheit.",
+      "referenz": [
+        "DV 1-101, Kap. 4.1.2 „Leitung und Koordinierung / LuK-Stab“ (S. 4-2)",
+        "DV 1-101, Kap. 4.1.4.1 „Leitungs- und Koordinierungsaufgaben auf Ebene der OV“ (S. 4-8)",
+        "Ausbildungshandbuch Zugtrupp Teil 1, Kap. 2.1.5 „Führungsorganisation in der Einsatzstruktur“"
+      ]
+    },
+    {
+      "kategorie": "Die LuK",
+      "punkte": 300,
+      "frage": "Der LuK-Stab OV ist nicht nur während des Einsatzes gefordert. Nenne je eine Aufgabe in der Einsatzvorbereitung, der Einsatzdurchführung und der Einsatznachbereitung.",
+      "antwort": "Zum Beispiel: Alarmierung prüfen – Lage feststellen und an die GSt melden – Einsatzbereitschaft wiederherstellen.",
+      "stichpunkte": [
+        "Vorbereitung: Alarmierungssystem überprüfen, Einsatz-Handakte OV pflegen, Fachleute zur Beratung erfassen, realitätsnahe Übungen und Probealarme",
+        "Durchführung: LuK-Stab einrichten, Lage feststellen und dokumentieren, Lagemeldungen an die GSt, Einsatztagebuch führen, Anforderungen der GSt umsetzen",
+        "Nachbereitung: Einsatzdaten erfassen, Einsatzabrechnung vorbereiten, psychosoziale Betreuung veranlassen, Einsatzbereitschaft wiederherstellen, Erfahrungen auswerten"
+      ],
+      "erklaerung": "Für Unterführer heißt das: Die Einsatzbereitschaft deiner Teileinheit ist Teil der Einsatzvorbereitung des OV. Die DV 1-101 nennt dort u. a. auch, Verpflegung für die ersten 6–8 Stunden vorzuhalten und die ständige Einsatzfähigkeit von Einheiten, Sondergeräten und persönlicher Ausstattung sicherzustellen.",
+      "referenz": [
+        "DV 1-101, Kap. 4.1.4.3 „Ablauforganisation LuK-Stab OV“ (S. 4-10 f.)"
+      ]
+    },
+    {
+      "kategorie": "Die LuK",
+      "punkte": 400,
+      "frage": "Wie wird der LuK-Stab OV nach DV 1-101 schlank besetzt – welche Sachgebiete werden zusammengefasst? Und wie findet sich diese Aufteilung im Zugtrupp wieder?",
+      "antwort": "S 1 + S 4 sowie S 2 + S 3 werden jeweils zusammengefasst – zwei Personen für vier Sachgebiete.",
+      "stichpunkte": [
+        "LuK OV: Leiter Stab (kann S 2/3 mit übernehmen), S 1/4, S 2/3, Öffentlichkeitsarbeit, bei Bedarf Fernmeldebetriebsstelle und Stab-Hilfspersonal – dazu Fachberater, Technische Berater oder Verbindungspersonen",
+        "Zugtrupp analog: taktischer Führer = Leitung + S 2/3 · Zugtruppführer = S 1/4 (Personal und Logistik) · Sprechfunker = Fernmeldeverkehr"
+      ],
+      "erklaerung": "Welches Mitglied des OV-Stabes im LuK-Stab welche Sachgebiete übernimmt, legt der OB im Einvernehmen mit dem stv. OB fest. Wer von Beginn an nach Sachgebieten arbeitet, kann eine Führungsstelle leichter übergeben oder erweitern.",
+      "referenz": [
+        "DV 1-101, Kap. 4.1.4.2 „Aufbauorganisation LuK-Stab OV“ (S. 4-9 f.)",
+        "Ausbildungshandbuch Zugtrupp Teil 1, Kap. 2.1.5, Abb. 2-8 (S. 2-47)"
+      ]
+    },
+    {
+      "kategorie": "Befugnisse",
+      "punkte": 100,
+      "frage": "Nach den Vorgesetztenverhältnissen im Ortsverband: Wer ist der direkte Vorgesetzte des Gruppenführers?",
+      "antwort": "Der Zugführer (ZFü).",
+      "stichpunkte": [
+        "ZFü: Vorgesetzter der Gruppenführer der ihm unterstellten (Teil-)Einheiten",
+        "GrFü: Vorgesetzter der Truppführer und Helfenden seiner (Bergungs-/Fach-)Gruppe",
+        "TrFü: Vorgesetzter der Helfenden seines Trupps"
+      ],
+      "erklaerung": "Die Funktionsträger haben jeweils Weisungsbefugnis gegenüber den genannten Helferinnen und Helfern. Disziplinarvorgesetzter aller Helferinnen und Helfer des OV ist der Ortsbeauftragte.",
+      "referenz": [
+        "GA LA 1, Kap. 1.1.5.3 „Vorgesetztenverhältnisse“, Tab. 1"
+      ]
+    },
+    {
+      "kategorie": "Befugnisse",
+      "punkte": 200,
+      "frage": "Zugführer und Gruppenführer fallen im Einsatz aus. Wer übernimmt jeweils? Und dürfen Sprechfunker oder Kraftfahrer des Zugtrupps Führungsentscheidungen treffen?",
+      "antwort": "ZFü → Zugtruppführer (stv. ZFü). GrFü → ein Truppführer. Helfende des Zugtrupps haben keine Weisungsbefugnis.",
+      "stichpunkte": [
+        "Die Führung des Einsatzes liegt zwingend beim ZFü oder beim ZTrFü",
+        "Sprechfunker und Kraftfahrer handeln nur im Auftrag und übermitteln lediglich Weisungen der verantwortlichen Führungskraft",
+        "Bei mehreren Truppführern regelt der Gruppenführer die Vertretungsfolge; den Truppführer vertritt eine erfahrene Helferin bzw. ein erfahrener Helfer"
+      ],
+      "erklaerung": "Klare Vertretungsregeln setzen den DV-100-Führungsgrundsatz „klare Befehls- und Unterstellungsverhältnisse“ um. Im Schichtbetrieb können ZFü und ZTrFü die Führung auch im Wechsel übernehmen.",
+      "referenz": [
+        "Ausbildungshandbuch Zugtrupp Teil 1, Kap. 1.2.4 „Funktionen“, Kap. 2.1.4 „Befugnisse der Führungsstelle“ (S. 2-21) und Kap. 2.1.5",
+        "Ausbildungshandbuch Zugtrupp Teil 2, Kap. 7.5.1 „Kräfteplanung/Schichtdienst“",
+        "FüUF 26 Lernunterlage „Der Unterführer bzw. die Unterführerin“, Kap. 1.6",
+        "DV 1-100, Kap. 2.1 „Führungsgrundsätze“"
+      ]
+    },
+    {
+      "kategorie": "Befugnisse",
+      "punkte": 300,
+      "frage": "Die Feuerwehr fordert THW-Einheiten an und hat eine eigene Einsatzleitung. Wem unterstehen die THW-Einheiten? Und wann richtet das THW stattdessen eine eigene Führungsstelle ein?",
+      "antwort": "Sie werden der Einsatzleitung des Bedarfsträgers unterstellt. Eine eigene THW-Führungsstelle ist die Ausnahme: wenn keine (ausreichende) taktische Führungsstruktur des Bedarfsträgers besteht – oder wenn mehrere THW-Einheiten mit gleichem Auftrag eingesetzt sind und dem THW eine abgeschlossene Aufgabe übertragen wurde.",
+      "stichpunkte": [
+        "Zusätzlich entsendet das THW einen Fachberater in den Stab bzw. die Einsatzleitung des Bedarfsträgers",
+        "Eigene THW-Führungsstellen: TEL, EAL oder UEAL THW – die übertragene Aufgabe löst das THW eigenständig",
+        "Leiter: TEL durch die Führungseinrichtung nach Landesrecht, EAL durch den Leiter TEL, UEAL durch den Leiter EAL"
+      ],
+      "erklaerung": "Für die Leitung einer THW-Führungsstelle ist die Qualifikation zwingend (Lehrgang „Führen in der THW-FüSt“ bzw. ZFü); ortskundige Führungskräfte werden bevorzugt eingesetzt.",
+      "referenz": [
+        "DV 1-101 Anlage 03 „Einsatzgrundsätze des THW“: Folie 1–3 (Unterstellung), Folie 8–14 (eigene THW-Führungsstellen), Folie 15–23 (Einsetzung der Leiter)"
+      ]
+    },
+    {
+      "kategorie": "Befugnisse",
+      "punkte": 400,
+      "frage": "Woraus ergibt sich im OV die Weisungsbefugnis von Vorgesetzten – und was unterscheidet Dienstaufsicht von Fachaufsicht?",
+      "antwort": "Aus den Funktionsbeschreibungen der StAN (Stärke- und Ausstattungsnachweisung); höhere Vorgesetzte können die Befugnis im Einzelfall übertragen.",
+      "stichpunkte": [
+        "Dienstaufsicht = disziplinare Befugnis gegenüber den OV-Angehörigen – im OV beim OB",
+        "Fachaufsicht = Prüfung der Recht- und Zweckmäßigkeit der Aufgabenwahrnehmung – bei den Führungskräften (OB, stv. OB, Einheitsführer); delegierbar",
+        "Dienstweg: Hierarchie auf- und absteigend einhalten; übergangene Stellen unverzüglich unterrichten"
+      ],
+      "erklaerung": "Auch Vertretungen ergeben sich aus der StAN; der OB kann abweichende Regelungen festlegen. Diese Regeln gelten in der Behördenstruktur – im Einsatz zählt die Unterstellung unter die Einsatzleitung.",
+      "referenz": [
+        "GO/EA § 6 „Führungskräfte“, § 10 „Dienstweg“, § 12 „Vorgesetzte“, § 13 „Dienst- und Fachaufsicht“, § 14 „Vertretung“"
+      ]
+    }
+  ];
+
+  const KATEGORIE_ROLLEN = {
+    "Führung vor Ort": "Einsatzleiter · Zugführer · Gruppenführer",
+    "Fachliche Beratung": "Fachberater · Technischer Berater",
+    "Die LuK": "LuK-Stab OV",
+    "Befugnisse": "StAN OV · DV 100"
+  };
+
+  const PUNKTE = [100, 200, 300, 400];
+  const KATEGORIEN = [...new Set(QUIZ.map(f => f.kategorie))];
+  const MAX_PUNKTE = QUIZ.reduce((s, f) => s + f.punkte, 0);
+  const TEAM_FARBEN = ["#e8590c", "#0c8599", "#7048e8", "#c2255c", "#2b8a3e", "#a87b00"];
+  const MAX_TEAMS = TEAM_FARBEN.length;
+  const SPEICHER_KEY = "thw-fuehrungsquiz-v2";
+
+  const el = id => document.getElementById(id);
+  const zahl = n => n.toLocaleString("de-DE");
+  const schluessel = f => f.kategorie + "|" + f.punkte;
+  const standardName = i => "Team " + (i + 1);
+
+  const brett = el("brett");
+  const overlay = el("overlay");
+  const modal = el("modal");
+  const btnLoesung = el("btn-loesung");
+  const btnSchliessen = el("btn-schliessen");
+  const vergabeBox = el("vergabe");
+  const vergabeListe = el("vergabe-liste");
+  const teamOverlay = el("team-overlay");
+  const endOverlay = el("end-overlay");
+
+  const kacheln = new Map();
+  let zustand = lade();
+  let aktuell = null;        // { frage, kachel }
+  let entwurf = null;        // Team-Dialog
+  let fokusVorDialog = null;
+
+  // ---------- Speicher ----------
+  function grundzustand() {
+    return { teams: [standardName(0), standardName(1)], minus: false, gespielt: [], vergabe: {}, endstandGezeigt: false, eingerichtet: false };
+  }
+
+  function lade() {
+    const z = grundzustand();
+    try {
+      const roh = JSON.parse(localStorage.getItem(SPEICHER_KEY) || "null");
+      if (!roh) return z;
+      if (Array.isArray(roh.teams) && roh.teams.length >= 1) z.teams = roh.teams.slice(0, MAX_TEAMS).map((n, i) => String(n || standardName(i)));
+      z.minus = !!roh.minus;
+      if (Array.isArray(roh.gespielt)) z.gespielt = roh.gespielt.filter(k => typeof k === "string");
+      if (roh.vergabe && typeof roh.vergabe === "object") z.vergabe = roh.vergabe;
+      z.endstandGezeigt = !!roh.endstandGezeigt;
+      z.eingerichtet = !!roh.eingerichtet;
+    } catch (e) { /* ohne Speicher spielen */ }
+    return z;
+  }
+
+  function speichere() {
+    try { localStorage.setItem(SPEICHER_KEY, JSON.stringify(zustand)); } catch (e) { /* ohne Speicher spielen */ }
+  }
+
+  // ---------- Punkte ----------
+  function punktestand() {
+    const stand = zustand.teams.map(() => 0);
+    Object.entries(zustand.vergabe).forEach(([k, eintraege]) => {
+      const p = Number(k.split("|")[1]) || 0;
+      Object.entries(eintraege).forEach(([idx, wert]) => {
+        const i = Number(idx);
+        if (i >= stand.length) return;
+        if (wert === 1) stand[i] += p;
+        else if (wert === -1 && zustand.minus) stand[i] -= p;
+      });
+    });
+    return stand;
+  }
+
+  function zeichnePunkte() {
+    const stand = punktestand();
+    const max = Math.max(...stand);
+    const chips = el("punkte-chips");
+    chips.innerHTML = "";
+    zustand.teams.forEach((name, i) => {
+      const chip = document.createElement("div");
+      chip.className = "chip" + (zustand.teams.length > 1 && max > 0 && stand[i] === max ? " fuehrend" : "");
+      const punkt = document.createElement("span");
+      punkt.className = "farbpunkt";
+      punkt.style.background = TEAM_FARBEN[i];
+      const n = document.createElement("span");
+      n.className = "chip-name";
+      n.textContent = name;
+      const w = document.createElement("span");
+      w.className = "chip-wert";
+      w.textContent = zahl(stand[i]);
+      chip.append(punkt, n, w);
+      chip.setAttribute("aria-label", name + ": " + stand[i] + " Punkte");
+      chips.appendChild(chip);
+    });
+    const anzahl = zustand.gespielt.length;
+    el("fortschritt").textContent = anzahl + "/" + QUIZ.length + " gespielt";
+    el("btn-endstand").hidden = anzahl < QUIZ.length;
+  }
+
+  // ---------- Spielfeld ----------
+  function baueBrett() {
+    brett.innerHTML = "";
+    kacheln.clear();
+    KATEGORIEN.forEach((k, ki) => {
+      const kopf = document.createElement("div");
+      kopf.className = "kategorie";
+      kopf.style.cssText = "--dc:" + (ki + 1) + ";--dr:1;--mc:1 / -1;--mr:" + (ki * 2 + 1);
+      const name = document.createElement("div");
+      name.className = "kategorie-name";
+      name.textContent = k;
+      kopf.appendChild(name);
+      if (KATEGORIE_ROLLEN[k]) {
+        const rollen = document.createElement("div");
+        rollen.className = "kategorie-rollen";
+        rollen.textContent = KATEGORIE_ROLLEN[k];
+        kopf.appendChild(rollen);
+      }
+      brett.appendChild(kopf);
+    });
+
+    PUNKTE.forEach((p, pi) => {
+      KATEGORIEN.forEach((k, ki) => {
+        const frage = QUIZ.find(f => f.kategorie === k && f.punkte === p);
+        if (!frage) return;
+        const kachel = document.createElement("button");
+        kachel.type = "button";
+        kachel.className = "kachel";
+        kachel.style.cssText = "--dc:" + (ki + 1) + ";--dr:" + (pi + 2) + ";--mc:" + (pi + 1) + ";--mr:" + (ki * 2 + 2);
+        kachel.innerHTML = '<span class="kachel-haken">✓<span class="nur-gross"> gespielt</span></span><span class="kachel-punkte"></span><span class="kachel-teams"></span>';
+        kachel.querySelector(".kachel-punkte").textContent = p;
+        kachel.addEventListener("click", () => oeffneFrage(frage, kachel));
+        kacheln.set(schluessel(frage), { kachel, frage });
+        aktualisiereKachel(kachel, frage);
+        brett.appendChild(kachel);
+      });
+    });
+  }
+
+  function aktualisiereKachel(kachel, frage) {
+    const k = schluessel(frage);
+    const gespielt = zustand.gespielt.includes(k);
+    kachel.classList.toggle("gespielt", gespielt);
+    const punkteBox = kachel.querySelector(".kachel-teams");
+    punkteBox.innerHTML = "";
+    const gewinner = [];
+    if (gespielt) {
+      const eintraege = zustand.vergabe[k] || {};
+      zustand.teams.forEach((name, i) => {
+        if (eintraege[i] === 1) {
+          const dot = document.createElement("i");
+          dot.style.background = TEAM_FARBEN[i];
+          punkteBox.appendChild(dot);
+          gewinner.push(name);
+        }
+      });
+    }
+    let label = frage.kategorie + ", " + frage.punkte + " Punkte";
+    if (gespielt) label += ", bereits gespielt" + (gewinner.length ? ", Punkte für " + gewinner.join(" und ") : "");
+    kachel.setAttribute("aria-label", label);
+  }
+
+  function aktualisiereAlleKacheln() {
+    kacheln.forEach(({ kachel, frage }) => aktualisiereKachel(kachel, frage));
+  }
+
+  // ---------- Overlays ----------
+  function oeffneOverlay(ov) {
+    fokusVorDialog = document.activeElement;
+    ov.hidden = false;
+    document.body.classList.add("gesperrt");
+  }
+
+  function schliesseOverlay(ov, fokusZiel) {
+    ov.hidden = true;
+    if (overlay.hidden && teamOverlay.hidden && endOverlay.hidden) document.body.classList.remove("gesperrt");
+    const ziel = fokusZiel || fokusVorDialog;
+    if (ziel && typeof ziel.focus === "function") ziel.focus();
+  }
+
+  function offenesOverlay() {
+    return [endOverlay, teamOverlay, overlay].find(o => !o.hidden) || null;
+  }
+
+  // ---------- Frage ----------
+  function oeffneFrage(frage, kachel) {
+    aktuell = { frage, kachel };
+    el("m-kategorie").textContent = frage.kategorie;
+    el("m-punkte").textContent = frage.punkte + " Punkte";
+    el("m-frage").textContent = frage.frage;
+    el("m-antwort").textContent = frage.antwort;
+    el("m-erklaerung").textContent = frage.erklaerung;
+    fuelleListe(el("m-stichpunkte"), frage.stichpunkte);
+    fuelleListe(el("m-referenz"), frage.referenz);
+
+    el("m-loesung").hidden = true;
+    modal.classList.remove("aufgedeckt");
+    vergabeBox.hidden = true;
+    btnLoesung.hidden = false;
+    oeffneOverlay(overlay);
+    el("m-inhalt").scrollTop = 0;
+    btnLoesung.focus();
+  }
+
+  function fuelleListe(liste, eintraege) {
+    liste.innerHTML = "";
+    (eintraege || []).forEach(t => {
+      const li = document.createElement("li");
+      li.textContent = t;
+      liste.appendChild(li);
+    });
+  }
+
+  function zeigeLoesung() {
+    if (overlay.hidden || !el("m-loesung").hidden) return;
+    el("m-loesung").hidden = false;
+    modal.classList.add("aufgedeckt");
+    btnLoesung.hidden = true;
+    baueVergabe();
+    vergabeBox.hidden = false;
+    el("m-inhalt").scrollTop = 0;
+    btnSchliessen.focus();
+  }
+
+  function baueVergabe() {
+    const { frage } = aktuell;
+    const p = frage.punkte;
+    const einzeln = zustand.teams.length === 1;
+    el("vergabe-titel").textContent = einzeln ? "Richtig beantwortet?" : "Wer hat richtig geantwortet?";
+    vergabeListe.classList.toggle("einzeln", einzeln);
+    vergabeListe.innerHTML = "";
+    zustand.teams.forEach((name, i) => {
+      const gruppe = document.createElement("div");
+      gruppe.className = "vergabe-team";
+      if (!einzeln) {
+        const n = document.createElement("span");
+        n.className = "vergabe-name";
+        const dot = document.createElement("span");
+        dot.className = "farbpunkt";
+        dot.style.background = TEAM_FARBEN[i];
+        const t = document.createElement("span");
+        t.textContent = name;
+        n.append(dot, t);
+        gruppe.appendChild(n);
+      }
+      gruppe.appendChild(vergabeKnopf(i, 1, (einzeln ? "✓ Richtig +" : "✓ +") + p, name + ": richtig, plus " + p + " Punkte"));
+      if (zustand.minus) gruppe.appendChild(vergabeKnopf(i, -1, (einzeln ? "✗ Falsch −" : "✗ −") + p, name + ": falsch, minus " + p + " Punkte"));
+      vergabeListe.appendChild(gruppe);
+    });
+    aktualisiereVergabe();
+  }
+
+  function vergabeKnopf(team, wert, text, label) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "vg-btn " + (wert === 1 ? "richtig" : "falsch");
+    b.textContent = text;
+    b.dataset.team = team;
+    b.dataset.wert = wert;
+    b.setAttribute("aria-label", label);
+    b.addEventListener("click", () => setzeVergabe(team, wert));
+    return b;
+  }
+
+  function aktualisiereVergabe() {
+    const eintraege = zustand.vergabe[schluessel(aktuell.frage)] || {};
+    vergabeListe.querySelectorAll(".vg-btn").forEach(b => {
+      b.setAttribute("aria-pressed", String(eintraege[b.dataset.team] === Number(b.dataset.wert)));
+    });
+  }
+
+  function setzeVergabe(team, wert) {
+    if (!aktuell) return;
+    const k = schluessel(aktuell.frage);
+    const eintraege = zustand.vergabe[k] || {};
+    if (eintraege[team] === wert) delete eintraege[team];
+    else eintraege[team] = wert;
+    if (Object.keys(eintraege).length) zustand.vergabe[k] = eintraege;
+    else delete zustand.vergabe[k];
+    speichere();
+    aktualisiereVergabe();
+    zeichnePunkte();
+  }
+
+  function schliesseFrage() {
+    if (overlay.hidden || !aktuell) return;
+    const { frage, kachel } = aktuell;
+    const k = schluessel(frage);
+    if (!zustand.gespielt.includes(k)) zustand.gespielt.push(k);
+    aktuell = null;
+    aktualisiereKachel(kachel, frage);
+    zeichnePunkte();
+    const fertig = zustand.gespielt.length >= QUIZ.length && !zustand.endstandGezeigt;
+    if (fertig) zustand.endstandGezeigt = true;
+    speichere();
+    schliesseOverlay(overlay, kachel);
+    if (fertig) zeigeEndstand();
+  }
+
+  btnLoesung.addEventListener("click", zeigeLoesung);
+  btnSchliessen.addEventListener("click", schliesseFrage);
+
+  // ---------- Endstand ----------
+  function zeigeEndstand() {
+    const stand = punktestand();
+    const rangfolge = zustand.teams.map((name, i) => ({ name, i, punkte: stand[i] })).sort((a, b) => b.punkte - a.punkte);
+    const liste = el("e-liste");
+    liste.innerHTML = "";
+    let platz = 0, vorher = null;
+    rangfolge.forEach((t, pos) => {
+      if (t.punkte !== vorher) { platz = pos + 1; vorher = t.punkte; }
+      const li = document.createElement("li");
+      li.className = "rang" + (platz === 1 && zustand.teams.length > 1 ? " erster" : "");
+      const pl = document.createElement("span");
+      pl.className = "rang-platz";
+      pl.textContent = platz + ".";
+      const dot = document.createElement("span");
+      dot.className = "farbpunkt";
+      dot.style.background = TEAM_FARBEN[t.i];
+      const n = document.createElement("span");
+      n.textContent = t.name;
+      const w = document.createElement("span");
+      w.className = "rang-wert";
+      w.textContent = zahl(t.punkte);
+      li.append(pl, dot, n, w);
+      liste.appendChild(li);
+    });
+    el("e-hinweis").textContent = zustand.teams.length === 1
+      ? "Du hast " + zahl(stand[0]) + " von " + zahl(MAX_PUNKTE) + " möglichen Punkten erreicht."
+      : "Alle " + QUIZ.length + " Fragen gespielt – maximal möglich waren " + zahl(MAX_PUNKTE) + " Punkte.";
+    oeffneOverlay(endOverlay);
+    el("e-zurueck").focus();
+  }
+
+  el("btn-endstand").addEventListener("click", zeigeEndstand);
+  el("e-zurueck").addEventListener("click", () => schliesseOverlay(endOverlay));
+  el("e-neu").addEventListener("click", () => { neuesSpiel(); schliesseOverlay(endOverlay, el("btn-reset")); });
+
+  function neuesSpiel() {
+    zustand.gespielt = [];
+    zustand.vergabe = {};
+    zustand.endstandGezeigt = false;
+    speichere();
+    aktualisiereAlleKacheln();
+    zeichnePunkte();
+  }
+
+  el("btn-reset").addEventListener("click", () => {
+    if (confirm("Neues Spiel starten? Alle Kacheln und Punkte werden zurückgesetzt, die Teams bleiben.")) neuesSpiel();
+  });
+
+  // ---------- Teams ----------
+  function oeffneTeams() {
+    entwurf = { teams: zustand.teams.slice(), minus: zustand.minus };
+    el("t-titel").textContent = zustand.eingerichtet ? "Teams & Punkte" : "Spiel einrichten";
+    el("t-minus").checked = entwurf.minus;
+    zeichneTeamDialog();
+    oeffneOverlay(teamOverlay);
+    const erstes = el("t-namen").querySelector("input");
+    if (erstes) erstes.focus();
+  }
+
+  function leseNamen() {
+    el("t-namen").querySelectorAll("input").forEach((inp, i) => { entwurf.teams[i] = inp.value; });
+  }
+
+  function zeichneTeamDialog() {
+    const box = el("t-namen");
+    box.innerHTML = "";
+    entwurf.teams.forEach((name, i) => {
+      const feld = document.createElement("div");
+      feld.className = "team-feld";
+      const dot = document.createElement("span");
+      dot.className = "farbpunkt";
+      dot.style.background = TEAM_FARBEN[i];
+      dot.style.fontSize = "1.4em";
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.maxLength = 24;
+      inp.value = name;
+      inp.placeholder = standardName(i);
+      inp.setAttribute("aria-label", "Name " + standardName(i));
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); uebernehmeTeams(); } });
+      feld.append(dot, inp);
+      box.appendChild(feld);
+    });
+    el("t-anzahl").textContent = entwurf.teams.length;
+    el("t-weniger").disabled = entwurf.teams.length <= 1;
+    el("t-mehr").disabled = entwurf.teams.length >= MAX_TEAMS;
+  }
+
+  el("t-weniger").addEventListener("click", () => {
+    leseNamen();
+    if (entwurf.teams.length > 1) entwurf.teams.pop();
+    zeichneTeamDialog();
+  });
+
+  el("t-mehr").addEventListener("click", () => {
+    leseNamen();
+    if (entwurf.teams.length < MAX_TEAMS) entwurf.teams.push(standardName(entwurf.teams.length));
+    zeichneTeamDialog();
+  });
+
+  function uebernehmeTeams() {
+    leseNamen();
+    zustand.teams = entwurf.teams.map((n, i) => n.trim() || standardName(i));
+    zustand.minus = el("t-minus").checked;
+    Object.keys(zustand.vergabe).forEach(k => {
+      Object.keys(zustand.vergabe[k]).forEach(i => { if (Number(i) >= zustand.teams.length) delete zustand.vergabe[k][i]; });
+      if (!Object.keys(zustand.vergabe[k]).length) delete zustand.vergabe[k];
+    });
+    zustand.eingerichtet = true;
+    speichere();
+    zeichnePunkte();
+    aktualisiereAlleKacheln();
+    schliesseOverlay(teamOverlay);
+  }
+
+  function abbrechenTeams() {
+    if (!zustand.eingerichtet) { zustand.eingerichtet = true; speichere(); }
+    schliesseOverlay(teamOverlay);
+  }
+
+  el("btn-teams").addEventListener("click", oeffneTeams);
+  el("t-ok").addEventListener("click", uebernehmeTeams);
+  el("t-abbrechen").addEventListener("click", abbrechenTeams);
+
+  // ---------- Tastatur ----------
+  document.addEventListener("keydown", e => {
+    const ov = offenesOverlay();
+    if (!ov) return;
+
+    if (e.key === "Tab") {
+      const ziele = [...ov.querySelectorAll("button, input")].filter(x => !x.disabled && x.offsetParent !== null);
+      if (!ziele.length) return;
+      const erstes = ziele[0], letztes = ziele[ziele.length - 1];
+      if (e.shiftKey && document.activeElement === erstes) { e.preventDefault(); letztes.focus(); }
+      else if (!e.shiftKey && document.activeElement === letztes) { e.preventDefault(); erstes.focus(); }
+      return;
+    }
+
+    if (ov === teamOverlay) { if (e.key === "Escape") { e.preventDefault(); abbrechenTeams(); } return; }
+    if (ov === endOverlay) { if (e.key === "Escape") { e.preventDefault(); schliesseOverlay(endOverlay); } return; }
+
+    const aufgedeckt = !el("m-loesung").hidden;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      schliesseFrage();
+    } else if (e.key === "l" || e.key === "L") {
+      e.preventDefault();
+      zeigeLoesung();
+    } else if (e.key === "ArrowRight" || e.key === "PageDown") {
+      e.preventDefault();
+      if (aufgedeckt) schliesseFrage(); else zeigeLoesung();
+    } else if (aufgedeckt && /^[1-6]$/.test(e.key)) {
+      const i = Number(e.key) - 1;
+      if (i < zustand.teams.length) { e.preventDefault(); setzeVergabe(i, 1); }
+    }
+  });
+
+  // ---------- Vollbild ----------
+  const btnVollbild = el("btn-vollbild");
+  if (!document.documentElement.requestFullscreen) {
+    btnVollbild.hidden = true;
+  } else {
+    btnVollbild.addEventListener("click", () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => {});
+    });
+    document.addEventListener("fullscreenchange", () => {
+      btnVollbild.textContent = document.fullscreenElement ? "Vollbild beenden" : "Vollbild";
+    });
+  }
+
+  // ---------- Start ----------
+  baueBrett();
+  zeichnePunkte();
+  if (!zustand.eingerichtet) oeffneTeams();
+</script>
+</body>
+</html>
